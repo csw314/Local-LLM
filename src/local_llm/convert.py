@@ -14,6 +14,9 @@ import tensorflow as tf
 
 from .models.bert import BertConfig, BertModel
 
+# ---------------------------------------------------------------------------
+# TF noise handling
+# ---------------------------------------------------------------------------
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "1")
 tf.get_logger().setLevel("ERROR")
@@ -21,10 +24,21 @@ warnings.filterwarnings("ignore", message="Protobuf gencode version .* older tha
 tf.compat.v1.disable_eager_execution()
 
 
+# ---------------------------------------------------------------------------
+# Low-level helpers (unchanged core converter)
+# ---------------------------------------------------------------------------
 def _assert_checkpoint_files_exist(prefix: str | Path) -> None:
+    """
+    Guard that a TF1 checkpoint prefix is valid.
+
+    Expects:
+        <prefix>.index
+        <prefix>.data-00000-of-00001   or other *.data-* shard(s)
+    """
     prefix = str(prefix)
     index = prefix + ".index"
     data = prefix + ".data-00000-of-00001"
+
     has_index = os.path.isfile(index)
     has_data = os.path.isfile(data) or any(
         f.startswith(os.path.basename(prefix) + ".data-")
@@ -70,6 +84,7 @@ def _map_name(tf_name: str) -> Tuple[Optional[str], bool]:
     if tf_name == "bert/embeddings/LayerNorm/beta":
         return "embeddings.LayerNorm.bias", False
 
+    # Encoder layers
     m = re.match(r"bert/encoder/layer_(\d+)/(.*)", tf_name)
     if m:
         i = int(m.group(1))
@@ -105,6 +120,7 @@ def _map_name(tf_name: str) -> Tuple[Optional[str], bool]:
     if tf_name == "bert/pooler/dense/bias":
         return "pooler.dense.bias", False
 
+    # everything else (pretraining heads, optimizer slots) is ignored
     return None, False
 
 
@@ -181,35 +197,192 @@ def convert_tf_bert_to_torch(
     return output_dir
 
 
-def interactive_setup_bert_base(
-    output_dir: str | Path = "./assets/bert-base-local",
-    copy_vocab: bool = True,
+# ---------------------------------------------------------------------------
+# High-level setup API (what you actually want)
+# ---------------------------------------------------------------------------
+def _derive_tf_prefix_from_dir(checkpoints_dir: Path) -> Path:
+    """
+    Given a directory containing TF checkpoints (e.g. uncased_L-12_H-768_A-12),
+    find a usable checkpoint *prefix* (no extension).
+
+    Priority:
+        1) <dir>/bert_model.ckpt if it exists
+        2) first *.ckpt.index found, drop the .index suffix
+    """
+    checkpoints_dir = checkpoints_dir.resolve()
+    if not checkpoints_dir.is_dir():
+        raise NotADirectoryError(f"checkpoints path is not a directory: {checkpoints_dir}")
+
+    # Common Google BERT layout
+    candidate = checkpoints_dir / "bert_model.ckpt"
+    if (checkpoints_dir / "bert_model.ckpt.index").is_file():
+        return candidate
+
+    # Generic fallback: first *.ckpt.index
+    for idx_file in checkpoints_dir.glob("*.ckpt.index"):
+        # "something.ckpt.index" -> "something.ckpt"
+        return idx_file.with_suffix("")
+
+    raise FileNotFoundError(
+        f"No *.ckpt.index checkpoint found in directory: {checkpoints_dir}"
+    )
+
+
+def setup_bert_base(
+    *,
+    checkpoints: str | Path | None = None,
+    model_params: str | Path | None = None,
+    vocab: str | Path,
+    config: str | Path,
+    output_dir: str | Path | None = None,
+    overwrite: bool = False,
 ) -> Path:
     """
-    Small helper intended for Jupyter:
+    Canonical setup function for a *local* BERT base model.
 
-    - Prompts for:
-        * TF checkpoint prefix      (e.g. /path/to/bert_model.ckpt)
-        * bert_config.json path
-        * vocab.txt path
-    - Runs conversion
-    - Copies vocab.txt into output_dir (if copy_vocab=True)
+    Exactly one of `checkpoints` or `model_params` must be provided::
+
+        # OPTION 1: start from Google's TF checkpoint folder
+        setup_bert_base(
+            checkpoints=".../uncased_L-12_H-768_A-12/",
+            vocab=".../uncased_L-12_H-768_A-12/vocab.txt",
+            config=".../uncased_L-12_H-768_A-12/bert_config.json",
+        )
+
+        # OPTION 2: start from an existing PyTorch .bin
+        setup_bert_base(
+            model_params=".../bert-base-local/pytorch_model.bin",
+            vocab=".../bert-base-local/vocab.txt",
+            config=".../bert-base-local/config.json",
+        )
+
+    Returns
+    -------
+    Path
+        Directory containing the three canonical assets:
+
+            assets_dir / "pytorch_model.bin"
+            assets_dir / "config.json"
+            assets_dir / "vocab.txt"
+    """
+    vocab_path = Path(vocab).expanduser().resolve()
+    config_path = Path(config).expanduser().resolve()
+
+    if not vocab_path.is_file():
+        raise FileNotFoundError(f"vocab file not found: {vocab_path}")
+    if not config_path.is_file():
+        raise FileNotFoundError(f"config json not found: {config_path}")
+
+    mode_from_tf = checkpoints is not None
+    mode_from_bin = model_params is not None
+
+    if mode_from_tf == mode_from_bin:
+        raise ValueError(
+            "Exactly one of `checkpoints` or `model_params` must be set "
+            "(checkpoints=... for TF → Torch; model_params=... for existing .bin)."
+        )
+
+    if output_dir is not None:
+        assets_dir = Path(output_dir).expanduser().resolve()
+    else:
+        if mode_from_tf:
+            cp = Path(checkpoints).expanduser().resolve()
+            # If you pass the folder, we default to sibling 'bert-base-local'
+            base_dir = cp if cp.is_dir() else cp.parent
+            assets_dir = base_dir.parent / "bert-base-local"
+        else:
+            mp = Path(model_params).expanduser().resolve()
+            assets_dir = mp.parent
+
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1) Handle model_params / TF conversion
+    if mode_from_tf:
+        cp = Path(checkpoints).expanduser().resolve()
+        if cp.is_dir():
+            tf_prefix = _derive_tf_prefix_from_dir(cp)
+        else:
+            # allow passing a prefix directly; strip any known extension if needed
+            tf_prefix = cp
+            for ext in (".index", ".data-00000-of-00001", ".meta"):
+                if tf_prefix.name.endswith(ext):
+                    tf_prefix = tf_prefix.with_name(tf_prefix.name[: -len(ext)])
+                    break
+
+        print(f"[setup] Using TF checkpoint prefix: {tf_prefix}")
+        # convert_tf_bert_to_torch writes pytorch_model.bin + config.json into assets_dir
+        convert_tf_bert_to_torch(tf_prefix, config_path, assets_dir)
+    else:
+        mp = Path(model_params).expanduser().resolve()
+        if not mp.is_file():
+            raise FileNotFoundError(f"model_params file not found: {mp}")
+        target_bin = assets_dir / "pytorch_model.bin"
+        if target_bin.exists() and not overwrite and target_bin.resolve() != mp:
+            raise FileExistsError(
+                f"Target model file already exists: {target_bin}\n"
+                "Use overwrite=True if you intend to replace it."
+            )
+        if target_bin.resolve() != mp:
+            shutil.copy2(mp, target_bin)
+            print(f"[setup] Copied model params → {target_bin}")
+        else:
+            print(f"[setup] Reusing existing model params at {target_bin}")
+
+    # 2) Ensure config.json is in assets_dir
+    target_cfg = assets_dir / "config.json"
+    if target_cfg.exists() and not overwrite and target_cfg.resolve() != config_path:
+        raise FileExistsError(
+            f"Target config.json already exists: {target_cfg}\n"
+            "Use overwrite=True if you intend to replace it."
+        )
+    if target_cfg.resolve() != config_path:
+        shutil.copy2(config_path, target_cfg)
+        print(f"[setup] Copied config.json → {target_cfg}")
+    else:
+        print(f"[setup] Reusing existing config.json at {target_cfg}")
+
+    # 3) Ensure vocab.txt is in assets_dir
+    target_vocab = assets_dir / "vocab.txt"
+    if target_vocab.exists() and not overwrite and target_vocab.resolve() != vocab_path:
+        raise FileExistsError(
+            f"Target vocab.txt already exists: {target_vocab}\n"
+            "Use overwrite=True if you intend to replace it."
+        )
+    if target_vocab.resolve() != vocab_path:
+        shutil.copy2(vocab_path, target_vocab)
+        print(f"[setup] Copied vocab.txt → {target_vocab}")
+    else:
+        print(f"[setup] Reusing existing vocab.txt at {target_vocab}")
+
+    print(f"[setup] BERT base assets ready at: {assets_dir}")
+    return assets_dir
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible interactive helper
+# ---------------------------------------------------------------------------
+def interactive_setup_bert_base(
+    output_dir: str | Path = "./assets/bert-base-local",
+) -> Path:
+    """
+    Interactive wrapper around `setup_bert_base`, mainly for quick notebook use.
+
+    Prompts for:
+        - TF checkpoint directory or prefix
+        - bert_config.json path
+        - vocab.txt path
     """
     output_dir = Path(output_dir)
 
     print("=== local-llm: BERT base setup (TF → PyTorch, fully offline) ===")
-    tf_prefix = input("Path prefix to TF checkpoint (no extension, e.g. /.../bert_model.ckpt): ").strip()
+    cp_raw = input("Path to TF checkpoint directory or prefix (e.g. .../uncased_L-12_H-768_A-12 or .../bert_model.ckpt): ").strip()
     cfg_path = input("Path to bert_config.json: ").strip()
     vocab_path = input("Path to vocab.txt: ").strip()
 
-    out = convert_tf_bert_to_torch(tf_prefix, cfg_path, output_dir)
-
-    if copy_vocab:
-        vp = Path(vocab_path)
-        if not vp.exists():
-            raise FileNotFoundError(f"vocab.txt not found at: {vp}")
-        shutil.copy2(vp, out / "vocab.txt")
-        print(f"[convert] Copied vocab.txt to {out / 'vocab.txt'}")
-
-    print(f"[convert] local-llm BERT base assets ready at: {out}")
-    return out
+    return setup_bert_base(
+        checkpoints=cp_raw,
+        vocab=vocab_path,
+        config=cfg_path,
+        output_dir=output_dir,
+        overwrite=False,
+    )

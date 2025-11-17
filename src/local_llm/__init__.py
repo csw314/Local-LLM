@@ -1,7 +1,7 @@
 # local_llm/__init__.py
 from __future__ import annotations
 
-from .convert import convert_tf_bert_to_torch, interactive_setup_bert_base
+from .convert import convert_tf_bert_to_torch, interactive_setup_bert_base, setup_bert_base
 from .models.bert import BertConfig, BertModel, masked_mean_pool
 from .tokenization.bert_wordpiece import (
     load_vocab,
@@ -18,9 +18,10 @@ from .pipelines.text_classification import (
 )
 
 __all__ = [
-    # conversion
+    # conversion / setup
     "convert_tf_bert_to_torch",
     "interactive_setup_bert_base",
+    "setup_bert_base",
     # core model
     "BertConfig",
     "BertModel",
