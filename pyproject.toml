@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mylib"                # change to your real name
+version = "0.1.0"
+description = "Small utility library for my personal projects."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "Your Name", email = "you@example.com" },
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/mylib"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
