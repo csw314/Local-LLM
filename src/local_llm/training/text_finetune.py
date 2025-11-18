@@ -617,3 +617,267 @@ def export_predictions_csv(
     path = cfg.output_dir / f"{split_name}_predictions.csv"
     out.to_csv(path, index=False)
     return path
+
+
+# ---------------------------------------------------------------------
+# Inference helpers: load metadata + config + model
+# ---------------------------------------------------------------------
+
+def load_finetune_meta(
+    output_dir: Path | str,
+) -> Tuple[Dict, Dict[str, int], Dict[int, str]]:
+    """
+    Load finetune_meta.json and return:
+        meta, label_to_id, id_to_label
+
+    This normalizes JSON string-keys back to Python types.
+    """
+    out_dir = Path(output_dir)
+    meta_path = out_dir / "finetune_meta.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"finetune_meta.json not found at: {meta_path}")
+
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    raw_l2i = meta.get("label_to_id", {})
+    raw_i2l = meta.get("id_to_label", {})
+
+    # labels are strings in JSON, ids are ints
+    label_to_id: Dict[str, int] = {str(k): int(v) for k, v in raw_l2i.items()}
+    id_to_label: Dict[int, str] = {int(k): str(v) for k, v in raw_i2l.items()}
+
+    return meta, label_to_id, id_to_label
+
+
+def build_inference_config_from_meta(
+    meta: Dict,
+    text_cols: Sequence[str],
+    output_dir: Path | str,
+) -> FineTuneConfig:
+    """
+    Construct a FineTuneConfig suitable for inference, using:
+    - text_cols (provided explicitly)
+    - paths + hyperparameters stored in finetune_meta.json
+
+    Note: label_col is irrelevant for unlabeled inference, so we use a dummy name.
+    """
+    assets_dir = Path(meta.get("assets_dir", "./assets/bert-base-local"))
+    max_len = int(meta.get("max_len", 256))
+    pooling = meta.get("pooling", "cls")
+    finetune_policy = meta.get("finetune_policy", "last_n")
+    finetune_last_n = int(meta.get("finetune_last_n", 2))
+
+    cfg = FineTuneConfig(
+        text_cols=tuple(text_cols),
+        label_col="__inference_only__",  # unused
+        assets_dir=assets_dir,
+        output_dir=Path(output_dir),
+        max_len=max_len,
+        pooling=pooling,
+        finetune_policy=finetune_policy,
+        finetune_last_n=finetune_last_n,
+    )
+    return cfg
+
+
+def load_finetuned_classifier_for_inference(
+    output_dir: Path | str,
+    text_cols: Sequence[str],
+    device: str | torch.device | None = None,
+) -> Tuple[BertTextClassifier, FineTuneConfig, Dict[str, int], Dict[int, str], Dict]:
+    """
+    High-level helper for inference:
+
+    - loads finetune_meta.json (labels, config)
+    - builds a FineTuneConfig for inference (using meta + text_cols)
+    - rebuilds a BertTextClassifier from base BERT assets
+    - loads fine-tuned weights from classifier_full.pt
+
+    Returns:
+        model, cfg, label_to_id, id_to_label, meta
+    """
+    output_dir = Path(output_dir)
+    meta, label_to_id, id_to_label = load_finetune_meta(output_dir)
+
+    cfg = build_inference_config_from_meta(
+        meta=meta,
+        text_cols=text_cols,
+        output_dir=output_dir,
+    )
+
+    if device is not None:
+        cfg.device = device
+
+    num_labels = len(label_to_id)
+
+    # Build base classifier from original assets
+    model = build_bert_text_classifier_from_assets(cfg, num_labels=num_labels)
+
+    # Load fine-tuned weights (full classifier)
+    classifier_full_path = output_dir / "classifier_full.pt"
+    if not classifier_full_path.exists():
+        raise FileNotFoundError(f"classifier_full.pt not found at: {classifier_full_path}")
+
+    map_location = torch.device(cfg.device)
+    state_dict = torch.load(classifier_full_path, map_location=map_location)
+    model.load_state_dict(state_dict)
+
+    model.to(map_location)
+    model.eval()
+
+    return model, cfg, label_to_id, id_to_label, meta
+
+
+def encode_unlabeled_dataframe(
+    df: pd.DataFrame,
+    cfg: FineTuneConfig,
+) -> Dict[str, torch.Tensor]:
+    """
+    Encode an unlabeled DataFrame into tensors suitable for inference:
+
+    Returned dict has:
+        - "input_ids"
+        - "token_type_ids"
+        - "attention_mask"
+
+    Labels are not required or produced.
+    """
+    cfg_resolved = cfg.resolved()
+    encoder = build_input_encoder(cfg_resolved)
+
+    input_ids_list: List[List[int]] = []
+    token_type_ids_list: List[List[int]] = []
+    attention_mask_list: List[List[int]] = []
+
+    for _, row in df.iterrows():
+        text = concat_text(row, cfg.text_cols)
+        enc: EncodeOutput = encoder.encode(text)
+        input_ids_list.append(enc.input_ids)
+        token_type_ids_list.append(enc.token_type_ids)
+        attention_mask_list.append(enc.attention_mask)
+
+    input_ids = torch.tensor(input_ids_list, dtype=torch.long)
+    token_type_ids = torch.tensor(token_type_ids_list, dtype=torch.long)
+    attention_mask = torch.tensor(attention_mask_list, dtype=torch.long)
+
+    return {
+        "input_ids": input_ids,
+        "token_type_ids": token_type_ids,
+        "attention_mask": attention_mask,
+    }
+
+
+class UnlabeledTensorDataset(Dataset):
+    """
+    Dataset for unlabeled inference:
+    yields (input_ids, token_type_ids, attention_mask).
+    """
+    def __init__(self, data: Dict[str, torch.Tensor]):
+        self.input_ids = data["input_ids"]
+        self.token_type_ids = data["token_type_ids"]
+        self.attention_mask = data["attention_mask"]
+
+        n = self.input_ids.size(0)
+        if self.token_type_ids.size(0) != n or self.attention_mask.size(0) != n:
+            raise ValueError("All tensors must have the same first dimension.")
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+    def __getitem__(self, idx: int):
+        return (
+            self.input_ids[idx],
+            self.token_type_ids[idx],
+            self.attention_mask[idx],
+        )
+
+
+def predict_unlabeled_tensors(
+    model: BertTextClassifier,
+    unlabeled_tensors: Dict[str, torch.Tensor],
+    cfg: FineTuneConfig,
+    id_to_label: Dict[int, str],
+) -> pd.DataFrame:
+    """
+    Run inference on unlabeled tensor dict and return a predictions DataFrame with:
+        - pred_label_id
+        - pred_label
+        - pred_confidence
+    """
+    cfg = cfg.resolved()
+    device = torch.device(cfg.device)
+
+    ds = UnlabeledTensorDataset(unlabeled_tensors)
+    loader = DataLoader(
+        ds,
+        batch_size=max(1, cfg.batch_size * 2),
+        shuffle=False,
+    )
+
+    model.eval()
+
+    all_pred_ids: List[int] = []
+    all_labels: List[str] = []
+    all_conf: List[float] = []
+
+    with torch.no_grad():
+        for batch in loader:
+            input_ids, token_type_ids, attention_mask = [
+                b.to(device) for b in batch
+            ]
+            out = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids,
+                labels=None,
+            )
+            logits = out["logits"]
+            probs = logits.softmax(dim=-1)
+            max_probs, pred_ids = probs.max(dim=-1)
+
+            for pid, conf in zip(pred_ids.cpu().tolist(), max_probs.cpu().tolist()):
+                all_pred_ids.append(int(pid))
+                all_labels.append(id_to_label[int(pid)])
+                all_conf.append(float(conf))
+
+    preds_df = pd.DataFrame(
+        {
+            "pred_label_id": all_pred_ids,
+            "pred_label": all_labels,
+            "pred_confidence": all_conf,
+        }
+    )
+    return preds_df
+
+
+def merge_unlabeled_with_predictions(
+    raw_df: pd.DataFrame,
+    preds_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Merge raw unlabeled rows with predictions.
+    Assumes row order is aligned.
+    """
+    out = raw_df.copy().reset_index(drop=True)
+    if len(out) != len(preds_df):
+        raise ValueError("raw_df and preds_df must have the same length.")
+    out["pred_label_id"] = preds_df["pred_label_id"]
+    out["pred_label"] = preds_df["pred_label"]
+    out["pred_confidence"] = preds_df["pred_confidence"]
+    return out
+
+
+def export_unlabeled_predictions_csv(
+    merged_df: pd.DataFrame,
+    cfg: FineTuneConfig,
+    filename: str = "unlabeled_predictions.csv",
+) -> Path:
+    """
+    Save merged predictions for unlabeled data to CSV.
+    """
+    cfg = cfg.resolved()
+    path = cfg.output_dir / filename
+    merged_df.to_csv(path, index=False)
+    return path
