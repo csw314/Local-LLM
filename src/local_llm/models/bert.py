@@ -62,7 +62,7 @@ ACT2FN = {
     "gelu": gelu,
     "relu": F.relu,
     "tanh": torch.tanh,
-    "new_gelu": torch.nn.GELU,  # left as-is to match your original implementation
+    "new_gelu": new_gelu,  # left as-is to match your original implementation
 }
 
 
