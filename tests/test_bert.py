@@ -116,12 +116,14 @@ def test_act2fn_mappings_and_behavior():
     assert y3.shape == x.shape
     assert torch.all((y3 >= -1.0) & (y3 <= 1.0))
 
-    # new_gelu: mapping is to the GELU module class
-    assert bm.ACT2FN["new_gelu"] is torch.nn.GELU
-    # Instantiate and call to verify it behaves sensibly
-    gelu_mod = bm.ACT2FN["new_gelu"]()
-    y4 = gelu_mod(x)
+    # new_gelu: mapping is to the new_gelu *function*
+    assert bm.ACT2FN["new_gelu"] is bm.new_gelu
+
+    # Call to verify it behaves sensibly
+    y4 = bm.ACT2FN["new_gelu"](x)
     assert y4.shape == x.shape
+    # Optional: basic sanity check that it's not crazy
+    assert torch.isfinite(y4).all()
 
 
 # ---------------------------------------------------------------------------
