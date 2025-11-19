@@ -1,4 +1,4 @@
-# local-llm
+# Local-LLM
 
 **Local LLM Utilities for Offline NLP Pipelines**
 
@@ -96,18 +96,25 @@ GPU support requires installing a **CUDA-enabled PyTorch build**.
 ```
 local-llm/
 │
+├── notebooks/
+│   ├── finetune_demo.ipynb     # Fine-tune BERT for Sequence Classication 
+│   ├── inference_demo.ipynb    # Run Inference with BERT on Unlabeled Data
+│   └── setup_demo.ipynb        # Setup Local-LLM for BERT Sequence Classification
+|
 ├── src/local_llm/
 │   ├── convert.py              # TF → PyTorch conversion logic
-│   ├── tokenization/           # Basic + WordPiece tokenizers
 │   ├── models/                 # PyTorch wrappers/classifiers
+│   ├── pipelines/              # Pipelines for task deployment
+│   ├── tokenization/           # Basic + WordPiece tokenizers
+│   ├── training/               # Ecoder + Head Config and Finetuning logic
 │   └── __init__.py
 │
 ├── tests/
 │   ├── test_convert.py
 │   ├── test_bert_wordpiece.py
+│   ├── test_bert.py
 │   └── ...
 │
-├── assets/                     # Example assets (optional)
 ├── README.md
 └── pyproject.toml
 ```
@@ -217,7 +224,7 @@ Many enterprise and government environments:
 
 ## License
 
-MIT License (modify as needed).
+Not sure the rules here, tbh. Don't steal my work! Honor system. 
 
 ---
 
