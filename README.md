@@ -384,39 +384,55 @@ Supports:
 #### **BERT Model Architecture (Local-LLM Implementation)**
 
 ```mermaid
-flowchart TD
-    %% --- Tokenization ---
-    subgraph Tokenization
-        A["Input text"] --> B["Basic tokenizer<br/>lowercasing + punctuation split"];
-        B --> C["WordPiece tokenizer<br/>subword segmentation"];
+flowchart LR
+    %% =========================
+    %% HIGH-LEVEL BERT PIPELINE
+    %% =========================
+
+    %% Stage 1: Text -> Tokens
+    A[Input text<br/>raw sentence(s)] --> B[Tokenization<br/>basic tokenizer + WordPiece];
+
+    %% Stage 2: Tokens -> IDs & masks
+    B --> C[[input_ids<br/>token_type_ids<br/>attention_mask]];
+
+    %% Stage 3: IDs -> Embeddings
+    C --> D[Embedding layer<br/>token + position + segment];
+
+    %% Stage 4: Encoder stack
+    D --> E[BERT encoder stack<br/>Transformer layer × N];
+
+    %% Stage 5: Pooling & classifier
+    E --> F[Pooling<br/>[CLS] vector or mean];
+    F --> G[Classifier head<br/>dense layer + softmax];
+    G --> H[Predicted label];
+
+    %% =====================================
+    %% DETAIL: A SINGLE TRANSFORMER LAYER
+    %% =====================================
+    subgraph ENC["Single BERT encoder layer"]
+        direction TB
+        E_in((hidden states_in)) --> MHA[Multi-head self-attention];
+        MHA --> AddNorm1[Add & LayerNorm];
+        AddNorm1 --> FFN[Position-wise feed-forward];
+        FFN --> AddNorm2[Add & LayerNorm];
+        AddNorm2 --> E_out((hidden states_out));
     end
 
-    %% --- IDs & masks ---
-    C --> D[[input_ids<br/>token_type_ids<br/>attention_mask]];
+    %% Attach layer detail to the encoder stack
+    E --- ENC;
 
-    %% --- Embeddings & Encoder stack ---
-    D --> Emb["Embedding layer<br/>token + position + segment"];
+    %% ==========
+    %% STYLING
+    %% ==========
+    classDef data fill:#e0f2fe,stroke:#0369a1,stroke-width:1px,color:#0f172a;
+    classDef tensor fill:#ecfdf5,stroke:#15803d,stroke-width:1px,color:#022c22;
+    classDef op fill:#f9fafb,stroke:#4b5563,stroke-width:1px,color:#111827;
+    classDef encdetail fill:#fefce8,stroke:#a16207,stroke-width:1px,color:#713f12;
 
-    subgraph Encoder_Stack ["BERT encoder (N layers)"]
-        direction LR
-        E1["Layer 1"] --> E2["Layer 2"] --> E3["..."] --> EN["Layer N"];
-    end
-
-    Emb --> E1;
-
-    %% --- Pooling & classifier ---
-    EN --> Pool["Pooling<br/>[CLS] token or mean pooling"];
-    Pool --> Head["Classifier head<br/>dropout + linear layer(s)"];
-    Head --> Y["Predicted label"];
-
-    %% --- Styling ---
-    classDef group fill:#f3f4ff,stroke:#4b5563,stroke-width:1px;
-    classDef op fill:#f9fafb,stroke:#4b5563,stroke-width:1px;
-    classDef tensor fill:#ecfdf5,stroke:#15803d,stroke-width:1px;
-
-    class Tokenization,Encoder_Stack group;
-    class A,B,C,Emb,E1,E2,E3,EN,Pool,Head,Y op;
-    class D tensor;
+    class A,H data;
+    class C tensor;
+    class B,D,E,F,G op;
+    class ENC,MHA,FFN,AddNorm1,AddNorm2,E_in,E_out encdetail;
 ```
 
 
