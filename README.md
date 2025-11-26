@@ -243,7 +243,7 @@ Not sure the rules here, tbh. Don't steal my work! Honor system.
 
 ### *Offline BERT Utilities for Secure, Air-Gapped NLP Pipelines*
 
-`local-llm` is a lightweight, auditable Python library that enables **fully offline** NLP workflows based on the original Google Research **BERT** model architecture.
+`Local-LLM` is a lightweight, auditable Python library that enables **fully offline** NLP workflows based on the original Google Research **BERT** model architecture.
 It is specifically designed for restricted government and enterprise environments where:
 
 * Internet access is limited or forbidden
@@ -286,6 +286,9 @@ bert_model.ckpt.index
 
 Local-LLM converts these into a PyTorch-native format for offline use.
 
+# **BERT Model Architecture (Local-LLM Implementation)**
+
+```mermaid
 flowchart TD
 
 A[Input Text] --> B[BasicTokenizer<br>• Lowercasing<br>• Punctuation split]
@@ -303,6 +306,7 @@ F12 --> G[Pooling<br>• CLS token<br>• or Mean Pooling]
 G --> H[Classifier Head<br>• Dropout<br>• Linear Layers<br>• Optional LayerNorm<br>• Activation]
 
 H --> I[Predicted Label]
+```
 
 ---
 
@@ -403,6 +407,9 @@ Supports:
 
 All steps needed to finetune BERT on labeled data are provided:
 
+
+# **Local-LLM Fine-Tuning Pipeline**
+```mermaid
 flowchart LR
 
 A[Raw CSV Data<br>Text + Labels] --> B[prepare_label_mapping()<br>• Convert labels to IDs]
@@ -422,6 +429,7 @@ I --> J[save_finetuned_classifier()<br>• classifier_full.pt<br>• pytorch_mod
 
 J --> K[evaluate_on_split()<br>Run inference on test split]
 K --> L[export_predictions_csv()<br>Predictions + confidence]
+```
 
 
 ```python
@@ -605,3 +613,47 @@ National Nuclear Security Administration
 [cameron.webster@nnsa.doe.gov](mailto:cameron.webster@nnsa.doe.gov)
 
 ---
+
+
+
+
+
+
+
+
+
+
+Absolutely — here are **two high-quality diagrams** you can paste directly into your README.
+They are written in **Mermaid**, which GitHub renders natively.
+They explain the **BERT architecture** and the **Local-LLM fine-tuning flow** in a clean, non-technical way suitable for briefing NNSA leadership.
+
+---
+
+
+
+
+
+This diagram summarizes the exact modules implemented in your `bert.py` and `text_classification.py` files.
+
+---
+
+
+
+This diagram reflects the *actual training flow* captured in `text_finetune.py`.
+
+
+
+This gives non-technical audiences a clear visualization of the complete training pipeline.
+
+---
+
+# Want polished, presentation-ready graphics too?
+
+If you'd like, I can produce:
+
+* **Styled PNG or SVG versions** (flowcharts suitable for slides)
+* **DOE-branded diagrams** (NNSA color scheme, DOE fonts)
+* **Architecture diagrams with shading and module grouping**
+* **System-level diagrams** showing how Local-LLM fits into enterprise workflows (air-gapped, HPC clusters, GitLab CI/CD, etc.)
+
+Just tell me which format you need.
