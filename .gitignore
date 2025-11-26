@@ -13,4 +13,6 @@ artifacts/
 *.pt
 *.bin
 *.csv
+.pytest_cache
+
 
