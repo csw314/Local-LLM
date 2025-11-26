@@ -391,7 +391,7 @@ flowchart LR
 
     %% Stage 1: Text -> Tokens
     A[Input text<br/>raw sentences] --> B[Tokenization<br/>basic tokenizer + WordPiece];
- 
+
     %% Stage 2: Tokens -> IDs & masks
     B --> C[[input_ids<br/>token_type_ids<br/>attention_mask]];
 
@@ -416,6 +416,7 @@ flowchart LR
         AddNorm1 --> FFN[Position-wise feed-forward];
         FFN --> AddNorm2[Add & LayerNorm];
         AddNorm2 --> E_out((hidden states_out));
+    end
 
     %% Attach layer detail to the encoder stack
     E --- ENC;
@@ -432,7 +433,7 @@ flowchart LR
     class C tensor;
     class B,D,E,F,G op;
     class ENC,MHA,FFN,AddNorm1,AddNorm2,E_in,E_out encdetail;
-    
+ 
 ```
 
 
