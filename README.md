@@ -402,7 +402,7 @@ flowchart LR
     D --> E[BERT encoder stack<br/>Transformer layer × N];
 
     %% Stage 5: Pooling & classifier
-    E --> F[Pooling<br/>[CLS] vector or mean];
+    E --> F[Pooling<br/>CLS vector or mean];
     F --> G[Classifier head<br/>dense layer + softmax];
     G --> H[Predicted label];
 
