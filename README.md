@@ -1,7 +1,7 @@
 
 # **Local-LLM**
 
-**Local NLP Pipelines Utilities for Air-Gapped Environments**
+**NLP Pipeline Utilities for Air-Gapped Environments**
 
 `Local-LLM` is a lightweight, auditable Python library that enables **fully offline** NLP workflows based on the original Google Research **BERT** model architecture.
 It is specifically designed for restricted government and enterprise environments where:
