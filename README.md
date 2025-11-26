@@ -390,40 +390,45 @@ flowchart LR
     %% =========================
 
     %% Stage 1: Text -> Tokens
-    A[Input text<br/>raw sentences] --> B[Tokenization<br/>basic tokenizer + WordPiece];
+    A[Input text<br/>raw sentences] --> B[Tokenization<br/>basic tokenizer and WordPiece]
 
     %% Stage 2: Tokens -> IDs & masks
-    B --> C[[input_ids<br/>token_type_ids<br/>attention_mask]];
+    B --> C[[input_ids<br/>token_type_ids<br/>attention_mask]]
 
     %% Stage 3: IDs -> Embeddings
-    C --> D[Embedding layer<br/>token + position + segment];
+    C --> D[Embedding layer<br/>token, position, segment]
 
-    %% Stage 4: Encoder stack
-    D --> E[BERT encoder stack<br/>Transformer layer × N];
+    %% Stage 4: Encoder stack (Layer 1 ... Layer N)
+    subgraph STACK["BERT encoder stack<br/>Transformer layer x N"]
+        direction TB
+        L1["Layer 1"] --> L2["Layer 2"] --> Lmid["..."] --> LN["Layer N"]
+    end
+
+    D --> L1
 
     %% Stage 5: Pooling & classifier
-    E --> F[Pooling<br/>CLS vector or mean];
-    F --> G[Classifier head<br/>dense layer + softmax];
-    G --> H[Predicted label];
+    LN --> F[Pooling<br/>CLS vector or mean]
+    F --> G[Classifier head<br/>dense layer and softmax]
+    G --> H[Predicted label]
 
     %% =====================================
     %% DETAIL: A SINGLE TRANSFORMER LAYER
     %% =====================================
-    subgraph ENC["Single BERT encoder layer"]
+    subgraph ENC["Single BERT encoder layer (detail view)"]
         direction TB
-        E_in((hidden states_in)) --> MHA[Multi-head self-attention];
-        MHA --> AddNorm1[Add & LayerNorm];
-        AddNorm1 --> FFN[Position-wise feed-forward];
-        FFN --> AddNorm2[Add & LayerNorm];
-        AddNorm2 --> E_out((hidden states_out));
+        E_in((hidden states in)) --> MHA[Multi-head self-attention]
+        MHA --> AddNorm1[Add and LayerNorm]
+        AddNorm1 --> FFN[Position-wise feed-forward]
+        FFN --> AddNorm2[Add and LayerNorm]
+        AddNorm2 --> E_out((hidden states out))
     end
 
-    %% Attach layer detail to the encoder stack
-    E --- ENC;
+    %% Conceptual link: stack <-> single-layer detail
+    L2 -. "structure of each Transformer layer" .- ENC
 
-    %% ==========
-    %% STYLING
-    %% ==========
+    %% ========== 
+    %% STYLING 
+    %% ========== 
     classDef data fill:#e0f2fe,stroke:#0369a1,stroke-width:1px,color:#0f172a;
     classDef tensor fill:#ecfdf5,stroke:#15803d,stroke-width:1px,color:#022c22;
     classDef op fill:#f9fafb,stroke:#4b5563,stroke-width:1px,color:#111827;
@@ -431,9 +436,9 @@ flowchart LR
 
     class A,H data;
     class C tensor;
-    class B,D,E,F,G op;
+    class B,D,L1,L2,Lmid,LN,F,G op;
     class ENC,MHA,FFN,AddNorm1,AddNorm2,E_in,E_out encdetail;
- 
+
 ```
 
 
