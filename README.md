@@ -290,22 +290,6 @@ Local-LLM converts these into a PyTorch-native format for offline use.
 
 ```mermaid
 flowchart TD
-    A["Input text"] --> B["BasicTokenizer<br/>lowercasing, punctuation split"]
-    B --> C["WordPiece tokenizer<br/>greedy longest-match"];
-    C --> D[[input_ids<br/>token_type_ids<br/>attention_mask]]
-
-    D --> E["Embeddings layer<br/>word + position + token type"]
-    E --> F["BERT encoder (N layers)"]; F --> F1["Layer 1<br/>multi-head attention + FFN"]
-    F1 --> F2["Layer 2"]
-    F2 --> F3["..."]
-    F3 --> F12["Layer N"]
-
-    F12 --> G["Pooling<br/>CLS token or mean pooling"]
-    G --> H["Classifier head<br/>dropout + linear layers"]
-    H --> I["Predicted label"]
-```
-```mermaid
-flowchart TD
     %% --- Tokenization ---
     subgraph Tokenization
         A["Input text"] --> B["Basic tokenizer<br/>lowercasing + punctuation split"];
