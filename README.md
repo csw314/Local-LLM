@@ -286,44 +286,6 @@ bert_model.ckpt.index
 
 Local-LLM converts these into a PyTorch-native format for offline use.
 
-### **BERT Model Architecture (Local-LLM Implementation)**
-
-```mermaid
-flowchart TD
-    %% --- Tokenization ---
-    subgraph Tokenization
-        A["Input text"] --> B["Basic tokenizer<br/>lowercasing + punctuation split"];
-        B --> C["WordPiece tokenizer<br/>subword segmentation"];
-    end
-
-    %% --- IDs & masks ---
-    C --> D[[input_ids<br/>token_type_ids<br/>attention_mask]];
-
-    %% --- Embeddings & Encoder stack ---
-    D --> Emb["Embedding layer<br/>token + position + segment"];
-
-    subgraph Encoder_Stack ["BERT encoder (N layers)"]
-        direction LR
-        E1["Layer 1"] --> E2["Layer 2"] --> E3["..."] --> EN["Layer N"];
-    end
-
-    Emb --> E1;
-
-    %% --- Pooling & classifier ---
-    EN --> Pool["Pooling<br/>[CLS] token or mean pooling"];
-    Pool --> Head["Classifier head<br/>dropout + linear layer(s)"];
-    Head --> Y["Predicted label"];
-
-    %% --- Styling ---
-    classDef group fill:#f3f4ff,stroke:#4b5563,stroke-width:1px;
-    classDef op fill:#f9fafb,stroke:#4b5563,stroke-width:1px;
-    classDef tensor fill:#ecfdf5,stroke:#15803d,stroke-width:1px;
-
-    class Tokenization,Encoder_Stack group;
-    class A,B,C,Emb,E1,E2,E3,EN,Pool,Head,Y op;
-    class D tensor;
-```
-
 ---
 
 # **Key Features**
@@ -419,31 +381,50 @@ Supports:
 
 ---
 
+#### **BERT Model Architecture (Local-LLM Implementation)**
+
+```mermaid
+flowchart TD
+    %% --- Tokenization ---
+    subgraph Tokenization
+        A["Input text"] --> B["Basic tokenizer<br/>lowercasing + punctuation split"];
+        B --> C["WordPiece tokenizer<br/>subword segmentation"];
+    end
+
+    %% --- IDs & masks ---
+    C --> D[[input_ids<br/>token_type_ids<br/>attention_mask]];
+
+    %% --- Embeddings & Encoder stack ---
+    D --> Emb["Embedding layer<br/>token + position + segment"];
+
+    subgraph Encoder_Stack ["BERT encoder (N layers)"]
+        direction LR
+        E1["Layer 1"] --> E2["Layer 2"] --> E3["..."] --> EN["Layer N"];
+    end
+
+    Emb --> E1;
+
+    %% --- Pooling & classifier ---
+    EN --> Pool["Pooling<br/>[CLS] token or mean pooling"];
+    Pool --> Head["Classifier head<br/>dropout + linear layer(s)"];
+    Head --> Y["Predicted label"];
+
+    %% --- Styling ---
+    classDef group fill:#f3f4ff,stroke:#4b5563,stroke-width:1px;
+    classDef op fill:#f9fafb,stroke:#4b5563,stroke-width:1px;
+    classDef tensor fill:#ecfdf5,stroke:#15803d,stroke-width:1px;
+
+    class Tokenization,Encoder_Stack group;
+    class A,B,C,Emb,E1,E2,E3,EN,Pool,Head,Y op;
+    class D tensor;
+```
+
+
 ### **✔ 5. Full Fine-Tuning Pipeline**
 
 All steps needed to finetune BERT on labeled data are provided:
 
-```mermaid
-flowchart LR
-    A["Raw CSV data<br/>text columns + label column"] --> B["prepare_label_mapping()<br/>convert labels to IDs"]
-    B --> C["concat_text()<br/>join selected text columns"]
-    C --> D["stratified_split_indices()<br/>train / val / test indices"]
 
-    D --> E["build_input_encoder()<br/>load vocab and tokenizer"]
-    E --> F["encode_splits()<br/>encode each split to tensors"]
-
-    F --> G["build_dataloaders()<br/>PyTorch DataLoaders for each split"]
-
-    G --> H["build_bert_text_classifier_from_assets()<br/>load BERT + classifier head<br/>set finetune policy"]
-
-    H --> I["train_text_classifier()<br/>train on train loader<br/>evaluate on val loader<br/>track best state"]
-
-    I --> J["save_finetuned_classifier()<br/>save classifier_full.pt<br/>save pytorch_model_finetuned.bin<br/>write finetune_meta.json"]
-
-    J --> K["evaluate_on_split()<br/>run inference on test tensors"]
-    K --> L["export_predictions_csv()<br/>write predictions + confidence to CSV"]
-
-```
 
 
 ```python
@@ -476,6 +457,31 @@ The library includes a complete recipe covering:
 See the demo notebooks for examples.
 
 ---
+
+#### **Fine-Tuning Workflow (text_finetune.py)**
+
+```mermaid
+flowchart LR
+    A["Raw CSV data<br/>text columns + label column"] --> B["prepare_label_mapping()<br/>convert labels to IDs"]
+    B --> C["concat_text()<br/>join selected text columns"]
+    C --> D["stratified_split_indices()<br/>train / val / test indices"]
+
+    D --> E["build_input_encoder()<br/>load vocab and tokenizer"]
+    E --> F["encode_splits()<br/>encode each split to tensors"]
+
+    F --> G["build_dataloaders()<br/>PyTorch DataLoaders for each split"]
+
+    G --> H["build_bert_text_classifier_from_assets()<br/>load BERT + classifier head<br/>set finetune policy"]
+
+    H --> I["train_text_classifier()<br/>train on train loader<br/>evaluate on val loader<br/>track best state"]
+
+    I --> J["save_finetuned_classifier()<br/>save classifier_full.pt<br/>save pytorch_model_finetuned.bin<br/>write finetune_meta.json"]
+
+    J --> K["evaluate_on_split()<br/>run inference on test tensors"]
+    K --> L["export_predictions_csv()<br/>write predictions + confidence to CSV"]
+
+```
+
 
 ### **✔ 6. Inference Pipeline for Unlabeled Data**
 
