@@ -426,3 +426,34 @@ _National Nuclear Security Administration_
 [cameron.webster@nnsa.doe.gov](mailto:cameron.webster@nnsa.doe.gov)
 
 ---
+
+# Citations
+
+@article{devlin2018bert,
+  title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author={Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  journal={arXiv preprint arXiv:1810.04805},
+  year={2018}
+}
+
+@misc{vaswani2023attentionneed,
+      title={Attention Is All You Need}, 
+      author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
+      year={2023},
+      eprint={1706.03762},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/1706.03762}, 
+}
+
+@misc{hendrycks2023gaussianerrorlinearunits,
+      title={Gaussian Error Linear Units (GELUs)}, 
+      author={Dan Hendrycks and Kevin Gimpel},
+      year={2023},
+      eprint={1606.08415},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/1606.08415}, 
+}
+
+---
