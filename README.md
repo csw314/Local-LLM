@@ -32,7 +32,7 @@ You may download any of the official pretrained models, such as:
 
 * `uncased_L-12_H-768_A-12`
 * `cased_L-12_H-768_A-12`
-* `uncased_L-24_H-1024_A-16`
+* `BERT-Large, Uncased (Whole Word Masking)`
 
 These folders include:
 
@@ -438,17 +438,6 @@ _National Nuclear Security Administration_
 }
 ```
 ```python
-@misc{vaswani2023attentionneed,
-      title={Attention Is All You Need}, 
-      author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
-      year={2023},
-      eprint={1706.03762},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/1706.03762}, 
-}
-```
-```python
 @misc{hendrycks2023gaussianerrorlinearunits,
       title={Gaussian Error Linear Units (GELUs)}, 
       author={Dan Hendrycks and Kevin Gimpel},
@@ -457,6 +446,25 @@ _National Nuclear Security Administration_
       archivePrefix={arXiv},
       primaryClass={cs.LG},
       url={https://arxiv.org/abs/1606.08415}, 
+}
+```
+```python
+@article{turc2019,
+  title={Well-Read Students Learn Better: On the Importance of Pre-training Compact Models},
+  author={Turc, Iulia and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  journal={arXiv preprint arXiv:1908.08962v2 },
+  year={2019}
+}
+```
+```python
+@misc{vaswani2023attentionneed,
+      title={Attention Is All You Need}, 
+      author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
+      year={2023},
+      eprint={1706.03762},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/1706.03762}, 
 }
 ```
 ---
