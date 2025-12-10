@@ -374,7 +374,7 @@ def setup_bert(
 # ---------------------------------------------------------------------------
 # Backwards-compatible interactive helper
 # ---------------------------------------------------------------------------
-def interactive_setup_bert_base(
+def interactive_setup_bert(
     output_dir: str | Path = "./assets/bert-base-local",
 ) -> Path:
     """

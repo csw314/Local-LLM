@@ -20,7 +20,7 @@ from .pipelines.text_classification import (
 __all__ = [
     # conversion / setup
     "convert_tf_bert_to_torch",
-    "interactive_setup_bert_base",
+    "interactive_setup_bert",
     "setup_bert",
     # core model
     "BertConfig",
