@@ -21,7 +21,7 @@ __all__ = [
     # conversion / setup
     "convert_tf_bert_to_torch",
     "interactive_setup_bert_base",
-    "setup_bert_base",
+    "setup_bert",
     # core model
     "BertConfig",
     "BertModel",

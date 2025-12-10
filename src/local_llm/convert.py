@@ -228,7 +228,7 @@ def _derive_tf_prefix_from_dir(checkpoints_dir: Path) -> Path:
     )
 
 
-def setup_bert_base(
+def setup_bert(
     *,
     checkpoints: str | Path | None = None,
     model_params: str | Path | None = None,
@@ -243,14 +243,14 @@ def setup_bert_base(
     Exactly one of `checkpoints` or `model_params` must be provided::
 
         # OPTION 1: start from Google's TF checkpoint folder
-        setup_bert_base(
+        setup_bert(
             checkpoints=".../uncased_L-12_H-768_A-12/",
             vocab=".../uncased_L-12_H-768_A-12/vocab.txt",
             config=".../uncased_L-12_H-768_A-12/bert_config.json",
         )
 
         # OPTION 2: start from an existing PyTorch .bin
-        setup_bert_base(
+        setup_bert(
             model_params=".../bert-base-local/pytorch_model.bin",
             vocab=".../bert-base-local/vocab.txt",
             config=".../bert-base-local/config.json",
@@ -392,7 +392,7 @@ def interactive_setup_bert_base(
     cfg_path = input("Path to bert_config.json: ").strip()
     vocab_path = input("Path to vocab.txt: ").strip()
 
-    return setup_bert_base(
+    return setup_bert(
         checkpoints=cp_raw,
         vocab=vocab_path,
         config=cfg_path,

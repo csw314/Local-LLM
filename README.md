@@ -393,6 +393,14 @@ assets = setup_bert_base(
 
 ## **Step 2 — Finetune on Labeled Data (Full Pipeline)**
 
+```python
+splits = encode_splits(df, train_idx, val_idx, test_idx, cfg)
+loaders = build_dataloaders(splits, cfg)
+model = build_bert_text_classifier_from_assets(cfg, num_labels)
+history, best_state = train_text_classifier(model, loaders, cfg)
+save_finetuned_classifier(model, best_state, cfg, label_to_id, id_to_label)
+```
+
 See `notebooks/finetune_demo.ipynb` for the guided tutorial.
 
 ---

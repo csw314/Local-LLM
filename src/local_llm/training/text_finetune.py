@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Tuple, Sequence, List, Literal, Optional
 
 import json
+import shutil
 import numpy as np
 import pandas as pd
 import torch
@@ -578,6 +579,17 @@ def save_finetuned_classifier(
     finetuned_bert_path = out_dir / "pytorch_model_finetuned.bin"
     torch.save(model.bert.state_dict(), finetuned_bert_path)
 
+    # copy vocab.txt into the finetuned directory so it is self-contained
+    vocab_src = Path(cfg.assets_dir) / "vocab.txt"
+    vocab_dst = out_dir / "vocab.txt"
+    if not vocab_src.exists():
+        raise FileNotFoundError(f"Expected vocab.txt at {vocab_src}")
+    shutil.copy2(vocab_src, vocab_dst)
+
+    # Append BERT config + head config + tokenizer setting into meta
+    bert_cfg_dict = model.bert.config.__dict__
+    head_cfg_dict = cfg.head_config.__dict__
+    
     meta = {
         "num_labels": len(label_to_id),
         "label_to_id": label_to_id,
@@ -591,8 +603,10 @@ def save_finetuned_classifier(
         "base_lr": cfg.base_lr,
         "weight_decay": cfg.weight_decay,
         "max_len": cfg.max_len,
-        "assets_dir": str(cfg.assets_dir),
         "run_name": cfg.run_name,
+        "lowercase": cfg.lowercase,
+        "bert_config": bert_cfg_dict,
+        "head_config": head_cfg_dict,
     }
     with open(out_dir / "finetune_meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
@@ -659,22 +673,28 @@ def build_inference_config_from_meta(
     """
     Construct a FineTuneConfig suitable for inference, using:
     - text_cols (provided explicitly)
-    - paths + hyperparameters stored in finetune_meta.json
+    - hyperparameters stored in finetune_meta.json
+
+    for inference, 'assets_dir' is the finetuned model directory itself, which contains vocab.txt
 
     Note: label_col is irrelevant for unlabeled inference, so we use a dummy name.
     """
-    assets_dir = Path(meta.get("assets_dir", "./assets/bert-base-local"))
+    output_dir = Path(output_dir)
+    assets_dir = output_dir               # vocab.txt is here now
+
     max_len = int(meta.get("max_len", 256))
     pooling = meta.get("pooling", "cls")
     finetune_policy = meta.get("finetune_policy", "last_n")
     finetune_last_n = int(meta.get("finetune_last_n", 2))
+    lowercase = bool(meta.get("lowercase", True))
 
     cfg = FineTuneConfig(
         text_cols=tuple(text_cols),
         label_col="__inference_only__",  # unused
-        assets_dir=assets_dir,
-        output_dir=Path(output_dir),
+        assets_dir=output_dir,
+        output_dir=output_dir,
         max_len=max_len,
+        lowercase=lowercase,
         pooling=pooling,
         finetune_policy=finetune_policy,
         finetune_last_n=finetune_last_n,
@@ -688,19 +708,26 @@ def load_finetuned_classifier_for_inference(
     device: str | torch.device | None = None,
 ) -> Tuple[BertTextClassifier, FineTuneConfig, Dict[str, int], Dict[int, str], Dict]:
     """
-    High-level helper for inference:
+    High-level helper with a *self-contained* finetuned bundle for inference:
+    
+    Expects in `output_dir`:
+        - finetune_meta.json
+        - classifier_full.pt
+        - vocab.txt
 
     - loads finetune_meta.json (labels, config)
     - builds a FineTuneConfig for inference (using meta + text_cols)
-    - rebuilds a BertTextClassifier from base BERT assets
     - loads fine-tuned weights from classifier_full.pt
 
     Returns:
         model, cfg, label_to_id, id_to_label, meta
     """
     output_dir = Path(output_dir)
+
+    # 1) load meta + label mappings
     meta, label_to_id, id_to_label = load_finetune_meta(output_dir)
 
+    # 2) Build a FineTuneConfig that points assets_dir to the finetuned dir
     cfg = build_inference_config_from_meta(
         meta=meta,
         text_cols=text_cols,
@@ -710,19 +737,35 @@ def load_finetuned_classifier_for_inference(
     if device is not None:
         cfg.device = device
 
+    # 3) Rebuild BERT config and model from saved config dict
+    bert_cfg_dict = meta["bert_config"]
+    bert_cfg = BertConfig(**bert_cfg_dict)
+    bert = BertModel(bert_cfg)
+
+
+    # 4) Rebuild classifier head config
+    head_cfg_dict = meta.get("head_config", {})
+    head_cfg = ClassifierHeadConfig(**head_cfg_dict)
+
     num_labels = len(label_to_id)
+    pooling = meta.get("pooling", "cls")
 
-    # Build base classifier from original assets
-    model = build_bert_text_classifier_from_assets(cfg, num_labels=num_labels)
+    # 5) Build the classifier skeleton
+    model = BertTextClassifier(
+        bert=bert, 
+        num_labels=num_labels,
+        pooling=pooling,
+        head_config=head_cfg,
+    )
 
-    # Load fine-tuned weights (full classifier)
+    # 6) load fine-tuned weights (full classifier)
     classifier_full_path = output_dir / "classifier_full.pt"
     if not classifier_full_path.exists():
         raise FileNotFoundError(f"classifier_full.pt not found at: {classifier_full_path}")
 
     map_location = torch.device(cfg.device)
     state_dict = torch.load(classifier_full_path, map_location=map_location)
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict, strict=True)
 
     model.to(map_location)
     model.eval()
