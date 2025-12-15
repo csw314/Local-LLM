@@ -36,7 +36,7 @@ You may download any of the official pretrained models, such as:
 
 ### Downloadable, Pre-trained BERT Models
 
-| **BERT Model** | **Transformer Blocks** | **Hidden Size** | **Self-Attention Heads** | **Parameters (M)** |
+| **BERT Model** | **Transformer Blocks** | **Hidden Size** | **Self-Attention Heads** | **Parameters (Millions)** |
 |:--------------:|:----------------------:|:---------------:|:------------------------:|:------------------:|
 | [BERT-Tiny](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-2_H-128_A-2.zip) | 2 | 128 | 2 | 4.4 |
 | [BERT-Mini](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-256_A-4.zip) | 4 | 256 | 4 | 11.3 |
@@ -88,7 +88,7 @@ All future operations (tokenization, training, inference) require only these thr
 
 ---
 
-### **2. Dependency-Free WordPiece Tokenizer **
+### **2. Dependency-Free WordPiece Tokenizer**
 
 Local-LLM includes a complete BERT tokenizer:
 
