@@ -40,11 +40,11 @@ You may download any of the official pretrained models, such as:
 |:--------------:|:----------------------:|:---------------:|:------------------------:|:------------------:|
 | [BERT-Tiny](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-2_H-128_A-2.zip) | 2 | 128 | 2 | 4.4 |
 | [BERT-Mini](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-256_A-4.zip) | 4 | 256 | 4 | 11.3 |
-| [BERT-Small](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-512_A-8.zip) | 4 | 256 | 8 | 29.1 |
-| [BERT-Medium](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-8_H-512_A-8.zip) | 8 | 256 | 8 | 41.7 |
-| [BERT-Base](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-12_H-768_A-12.zip) | 12 | 256 | 12 | 110.1 |
-| [BERT-Large, Uncased (Whole Word Masking)](https://storage.googleapis.com/bert_models/2019_05_30/wwm_uncased_L-24_H-1024_A-16.zip) | 24 | 256 | 16 | 340 |
-| [BERT-Large, Cased (Whole Word Masking)](https://storage.googleapis.com/bert_models/2019_05_30/wwm_cased_L-24_H-1024_A-16.zip) | 24 | 16 | 16 | 340 |
+| [BERT-Small](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-512_A-8.zip) | 4 | 512 | 8 | 29.1 |
+| [BERT-Medium](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-8_H-512_A-8.zip) | 8 | 512 | 8 | 41.7 |
+| [BERT-Base](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-12_H-768_A-12.zip) | 12 | 768 | 12 | 110.1 |
+| [BERT-Large, Uncased (Whole Word Masking)](https://storage.googleapis.com/bert_models/2019_05_30/wwm_uncased_L-24_H-1024_A-16.zip) | 24 | 1024 | 16 | 340 |
+| [BERT-Large, Cased (Whole Word Masking)](https://storage.googleapis.com/bert_models/2019_05_30/wwm_cased_L-24_H-1024_A-16.zip) | 24 | 1024 | 16 | 340 |
 
 These folders include:
 
