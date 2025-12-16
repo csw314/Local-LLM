@@ -37,7 +37,7 @@ You may download any of the official pretrained models, such as:
 ### Downloadable, Pre-trained BERT Models
 
 | **BERT Model** | **Transformer Blocks** | **Hidden Size** | **Self-Attention Heads** | **Parameters (Millions)** | **Size (gB)** |
-|:--------------:|:----------------------:|:---------------:|:------------------------:|:-------------------------:|:--------:|
+|:--------------:|:----------------------:|:---------------:|:------------------------:|:-------------------------:|:-------------:|
 | [BERT-Tiny](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-2_H-128_A-2.zip) | 2 | 128 | 2 | 4.4 | 0.017 |
 | [BERT-Mini](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-256_A-4.zip) | 4 | 256 | 4 | 11.3 | 0.044 |
 | [BERT-Small](https://storage.googleapis.com/bert_models/2020_02_20/uncased_L-4_H-512_A-8.zip) | 4 | 512 | 8 | 29.1 | 0.114 |
