@@ -419,6 +419,14 @@ See `notebooks/finetune_demo.ipynb` for the guided tutorial.
 
 ## **Step 3 — Run Inference on Unlabeled Data**
 
+```python
+model, cfg, label_to_id, id_to_label, meta = load_finetuned_classifier_for_inference(output_dir, text_cols=features, device="cuda")
+unlabeled_df = pd.read_csv(unlabeled_csv_path)
+unlabeled_tensors = encode_unlabeled_dataframe(df, cfg)
+preds_df = predict_unlabeled_tensors(model, unlabeled_tensors, cfg, id_to_label)
+merged_df = merge_unlabeled_with_predictions(raw_df, preds_df)
+```
+
 See `notebooks/inference_demo.ipynb`.
 
 ---
